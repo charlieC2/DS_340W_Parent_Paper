@@ -4,3 +4,46 @@ output: pdf_document
 date: '2023-03-22'
 ---
 
+Requirements
+```{r}
+library(data.table)
+library(party)
+library(caret)
+```
+
+First load the data and get it ready. Split into  80% training and 20% testing. Dummy vars
+```{r}
+data <- fread('../dataset/dataset.csv')
+target <- fread('../dataset/target.csv')
+
+data_full <- cbind(data, target)
+
+D2 <- data_full[,-c("lifetime", "tx_in", "tx_out", "#addresses_paying_contract", "#addresses_paid_by_contract", "investment_to_contract/tx_in", "payment_from_contract/tx_out", "percentage_some_tx_in", "sdev_tx_in", "percentage_some_tx_out", "sdev_tx_out", "owner_gets_eth_Wo_investing", "owner_gets_eth_investing", "owner_no_eth")]
+
+D3 <- data_full[, -c("payment_out","owner_gets_eth_investing", "owner_no_eth")]
+
+full_dummies <- dummyVars(target ~ ., data = data_full)
+dummy_data <- predict(full_dummies, newdata = data_full)
+
+D2_dummies <- dummyVars(target ~ ., data = D2)
+D2_dummy <- predict(D2_dummies, newdata = D2)
+
+D3_dummies <- dummyVars(target ~ ., data = D3)
+D3_dummy <- predict(D3_dummies, newdata = D3)
+
+D1_target <- cbind(dummy_data, target)
+D2_target <- cbind(D2_dummies, target)
+D3_target <- cbind(D3_dummies, target)
+
+sample <- sample(c(TRUE, FALSE), nrow(dummy_data), replace = TRUE, prob = c(.8, .2))
+
+
+```
+
+Run each of the 3 models on D1
+```{r}
+output_tree <- ctree(target ~ ., data = D1_train)
+
+```
+
+

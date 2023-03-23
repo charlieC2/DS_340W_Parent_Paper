@@ -9,6 +9,7 @@ Requirements
 library(data.table)
 library(party)
 library(caret)
+library(lightgbm)
 ```
 
 First load the data and get it ready. Split into  80% training and 20% testing. Dummy vars
@@ -55,6 +56,23 @@ output_tree <- ctree(target ~ ., data = D1_train)
 D1_test$predict <- predict(output_tree, D1_test) > .5
 D1_test$predict <- as.integer(D1_test$predict)
 
+
+
+dtrain <- lgb.Dataset(as.matrix(D1_train[, -"target"]), label = as.matrix(D1_train$target))
+dtest <- lgb.Dataset.create.valid(dtrain, as.matrix(D1_test), label = as.matrix(target$target[!sample]))
+
+valids = list(test = dtest)
+params <- list(objective = "binary")
+
+output_lgb <- lgb.train(params = params, data = dtrain, valids = valids)
 ```
+
+
+Calculate confusion matrix and accuracy for each of the models on D1
+```{r}
+confusion_tree <- confusionMatrix(data = as.factor(D1_test$predict), reference = as.factor(target$target[!sample]))
+confusion_tree
+```
+
 
 

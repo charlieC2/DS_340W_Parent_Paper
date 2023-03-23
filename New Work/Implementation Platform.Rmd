@@ -10,6 +10,7 @@ library(data.table)
 library(party)
 library(caret)
 library(lightgbm)
+library(randomForest)
 ```
 
 First load the data and get it ready. Split into  80% training and 20% testing. Dummy vars
@@ -51,27 +52,36 @@ D3_test <- data.table(D3_dummy)[!sample]
 
 Run each of the 3 models on D1
 ```{r}
-output_tree <- ctree(target ~ ., data = D1_train)
+# Decision tree
+D1_tree <- ctree(target ~ ., data = D1_train)
 
-D1_test$predict <- predict(output_tree, D1_test) > .5
-D1_test$predict <- as.integer(D1_test$predict)
+D1_predict_tree <- as.integer(predict(D1_tree, D1_test) > .5)
 
+# LGBM
+D1_dtrain <- lgb.Dataset(as.matrix(D1_train[, -"target"]), label = as.matrix(D1_train$target))
+D1_dtest <- lgb.Dataset.create.valid(D1_dtrain, as.matrix(D1_test), label = as.matrix(target$target[!sample]))
 
-
-dtrain <- lgb.Dataset(as.matrix(D1_train[, -"target"]), label = as.matrix(D1_train$target))
-dtest <- lgb.Dataset.create.valid(dtrain, as.matrix(D1_test), label = as.matrix(target$target[!sample]))
-
-valids = list(test = dtest)
+D1_valids = list(test = D1_dtest)
 params <- list(objective = "binary")
 
-output_lgb <- lgb.train(params = params, data = dtrain, valids = valids)
+D1_lgb <- lgb.train(params = params, data = D1_dtrain, valids = D1_valids)
+D1_predict_lgbm <- as.integer(predict(D1_lgb, as.matrix(D1_test)) > .5)
+
+# Random forest
+D1_forest <- randomForest(target ~ ., data = D1_train, importance = TRUE, proximity = TRUE)
+
 ```
 
 
 Calculate confusion matrix and accuracy for each of the models on D1
 ```{r}
-confusion_tree <- confusionMatrix(data = as.factor(D1_test$predict), reference = as.factor(target$target[!sample]))
+# Decision tree
+confusion_tree <- confusionMatrix(data = as.factor(D1_predict_tree), reference = as.factor(target$target[!sample]))
 confusion_tree
+
+# LGBM
+confusion_lgbm <- confusionMatrix(data = as.factor(D1_predict_lgbm), reference = as.factor(target$target[!sample]))
+confusion_lgbm
 ```
 
 

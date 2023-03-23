@@ -19,8 +19,13 @@ data <- fread('../dataset/dataset.csv')
 target <- fread('../dataset/target.csv')
 
 data_full <- cbind(data, target)
+data_full$in_tx_in <- data_full[, 'investment_to_contract/tx_in']
+data_full$pay_tx_out <- data_full[, 'payment_from_contract/tx_out']
+data_full$addresses_paying_contract <- data_full[, "#addresses_paying_contract"]
+data_full$addresses_paid_by_contract <- data_full[, "#addresses_paid_by_contract"]
+data_full <- data_full[, -c("investment_to_contract/tx_in", "payment_from_contract/tx_out", "#addresses_paying_contract", "#addresses_paid_by_contract")]
 
-D2 <- data_full[,-c("lifetime", "tx_in", "tx_out", "#addresses_paying_contract", "#addresses_paid_by_contract", "investment_to_contract/tx_in", "payment_from_contract/tx_out", "percentage_some_tx_in", "sdev_tx_in", "percentage_some_tx_out", "sdev_tx_out", "owner_gets_eth_Wo_investing", "owner_gets_eth_investing", "owner_no_eth")]
+D2 <- data_full[,-c("lifetime", "tx_in", "tx_out", "addresses_paying_contract", "addresses_paid_by_contract", "in_tx_in", "pay_tx_out", "percentage_some_tx_in", "sdev_tx_in", "percentage_some_tx_out", "sdev_tx_out", "owner_gets_eth_Wo_investing", "owner_gets_eth_investing", "owner_no_eth")]
 
 D3 <- data_full[, -c("payment_out","owner_gets_eth_investing", "owner_no_eth")]
 
@@ -68,7 +73,8 @@ D1_lgb <- lgb.train(params = params, data = D1_dtrain, valids = D1_valids)
 D1_predict_lgbm <- as.integer(predict(D1_lgb, as.matrix(D1_test)) > .5)
 
 # Random forest
-D1_forest <- randomForest(target ~ ., data = D1_train, importance = TRUE, proximity = TRUE)
+D1_forest <- randomForest(as.factor(target) ~ ., data = D1_train, ntree = 10)
+D1_predict_forest <- predict(D1_forest, D1_test)
 
 ```
 
@@ -76,12 +82,94 @@ D1_forest <- randomForest(target ~ ., data = D1_train, importance = TRUE, proxim
 Calculate confusion matrix and accuracy for each of the models on D1
 ```{r}
 # Decision tree
-confusion_tree <- confusionMatrix(data = as.factor(D1_predict_tree), reference = as.factor(target$target[!sample]))
-confusion_tree
+D1_confusion_tree <- confusionMatrix(data = as.factor(D1_predict_tree), reference = as.factor(target$target[!sample]))
+D1_confusion_tree
 
 # LGBM
-confusion_lgbm <- confusionMatrix(data = as.factor(D1_predict_lgbm), reference = as.factor(target$target[!sample]))
-confusion_lgbm
+D1_confusion_lgbm <- confusionMatrix(data = as.factor(D1_predict_lgbm), reference = as.factor(target$target[!sample]))
+D1_confusion_lgbm
+
+#Random forest
+D1_confusion_forest <- confusionMatrix(data = D1_predict_forest, reference = as.factor(target$target[!sample]))
+D1_confusion_forest
+```
+
+Run each of the 3 models on D2
+```{r}
+# Decision tree
+D2_tree <- ctree(target ~ ., data = D2_train)
+
+D2_predict_tree <- as.integer(predict(D2_tree, D2_test) > .5)
+
+# LGBM
+D2_dtrain <- lgb.Dataset(as.matrix(D2_train[, -"target"]), label = as.matrix(D2_train$target))
+D2_dtest <- lgb.Dataset.create.valid(D2_dtrain, as.matrix(D2_test), label = as.matrix(target$target[!sample]))
+
+D2_valids = list(test = D2_dtest)
+params <- list(objective = "binary")
+
+D2_lgb <- lgb.train(params = params, data = D2_dtrain, valids = D2_valids)
+D2_predict_lgbm <- as.integer(predict(D2_lgb, as.matrix(D2_test)) > .5)
+
+# Random forest
+D2_forest <- randomForest(as.factor(target) ~ ., data = D2_train, ntree = 10)
+D2_predict_forest <- predict(D2_forest, D2_test)
+
+```
+
+
+Calculate confusion matrix and accuracy for each of the models on D2
+```{r}
+# Decision tree
+D2_confusion_tree <- confusionMatrix(data = as.factor(D2_predict_tree), reference = as.factor(target$target[!sample]))
+D2_confusion_tree
+
+# LGBM
+D2_confusion_lgbm <- confusionMatrix(data = as.factor(D2_predict_lgbm), reference = as.factor(target$target[!sample]))
+D2_confusion_lgbm
+
+#Random forest
+D2_confusion_forest <- confusionMatrix(data = D2_predict_forest, reference = as.factor(target$target[!sample]))
+D2_confusion_forest
+```
+
+Run each of the 3 models on D3
+```{r}
+# Decision tree
+D3_tree <- ctree(target ~ ., data = D3_train)
+
+D3_predict_tree <- as.integer(predict(D3_tree, D3_test) > .5)
+
+# LGBM
+D3_dtrain <- lgb.Dataset(as.matrix(D3_train[, -"target"]), label = as.matrix(D3_train$target))
+D3_dtest <- lgb.Dataset.create.valid(D3_dtrain, as.matrix(D3_test), label = as.matrix(target$target[!sample]))
+
+D3_valids = list(test = D3_dtest)
+params <- list(objective = "binary")
+
+D3_lgb <- lgb.train(params = params, data = D3_dtrain, valids = D3_valids)
+D3_predict_lgbm <- as.integer(predict(D3_lgb, as.matrix(D3_test)) > .5)
+
+# Random forest
+D3_forest <- randomForest(as.factor(target) ~ ., data = D3_train, ntree = 10)
+D3_predict_forest <- predict(D3_forest, D3_test)
+
+```
+
+
+Calculate confusion matrix and accuracy for each of the models on D1
+```{r}
+# Decision tree
+D3_confusion_tree <- confusionMatrix(data = as.factor(D3_predict_tree), reference = as.factor(target$target[!sample]))
+D3_confusion_tree
+
+# LGBM
+D3_confusion_lgbm <- confusionMatrix(data = as.factor(D3_predict_lgbm), reference = as.factor(target$target[!sample]))
+D3_confusion_lgbm
+
+#Random forest
+D3_confusion_forest <- confusionMatrix(data = D3_predict_forest, reference = as.factor(target$target[!sample]))
+D3_confusion_forest
 ```
 
 

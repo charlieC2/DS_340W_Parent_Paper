@@ -157,7 +157,7 @@ D3_predict_forest <- predict(D3_forest, D3_test)
 ```
 
 
-Calculate confusion matrix and accuracy for each of the models on D1
+Calculate confusion matrix and accuracy for each of the models on D3
 ```{r}
 # Decision tree
 D3_confusion_tree <- confusionMatrix(data = as.factor(D3_predict_tree), reference = as.factor(target$target[!sample]))

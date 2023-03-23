@@ -38,13 +38,13 @@ D3_target <- cbind(D3_dummy, target)
 sample <- sample(c(TRUE, FALSE), nrow(dummy_data), replace = TRUE, prob = c(.8, .2))
 
 D1_train <- D1_target[sample]
-D1_test <- D1_target[!sample]
+D1_test <- data.table(dummy_data[!sample])
 
 D2_train <- D2_target[sample]
-D2_test <- D2_target[!sample]
+D2_test <- data.table(D2_dummy[!sample])
 
 D3_train <- D3_target[sample]
-D3_test <- D3_target[!sample]
+D3_test <- data.table(D3_dummy[!sample])
 ```
 
 Run each of the 3 models on D1

@@ -18,6 +18,7 @@ First load the data and get it ready. Split into  80% training and 20% testing. 
 data <- fread('../dataset/dataset.csv')
 target <- fread('../dataset/target.csv')
 
+# The following lines are to rename columns with some problematic symbols in their names
 data_full <- cbind(data, target)
 data_full$in_tx_in <- data_full[, 'investment_to_contract/tx_in']
 data_full$pay_tx_out <- data_full[, 'payment_from_contract/tx_out']

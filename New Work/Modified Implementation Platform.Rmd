@@ -1,0 +1,153 @@
+---
+title: "Modified Implementation Platform"
+output: pdf_document
+date: '2023-04-05'
+---
+
+Requirements
+```{r}
+library(data.table)
+library(class)
+library(fastglm)
+library(e1071)
+library(caret)
+```
+
+First load the data and get it ready. Split into  80% training and 20% testing. Dummy vars
+```{r}
+data <- fread('../dataset/dataset.csv')
+target <- fread('../dataset/target.csv')
+
+data_full <- data
+
+# The following lines are to rename columns with some problematic symbols in their names
+data_full$in_tx_in <- data_full[, 'investment_to_contract/tx_in']
+data_full$pay_tx_out <- data_full[, 'payment_from_contract/tx_out']
+data_full$addresses_paying_contract <- data_full[, "#addresses_paying_contract"]
+data_full$addresses_paid_by_contract <- data_full[, "#addresses_paid_by_contract"]
+data_full <- data_full[, -c("investment_to_contract/tx_in", "payment_from_contract/tx_out", "#addresses_paying_contract", "#addresses_paid_by_contract")]
+
+D2 <- data_full[,-c("lifetime", "tx_in", "tx_out", "addresses_paying_contract", "addresses_paid_by_contract", "in_tx_in", "pay_tx_out", "percentage_some_tx_in", "sdev_tx_in", "percentage_some_tx_out", "sdev_tx_out", "owner_gets_eth_Wo_investing", "owner_gets_eth_investing", "owner_no_eth")]
+
+D3 <- data_full[, -c("payment_out","owner_gets_eth_investing", "owner_no_eth")]
+
+full_dummies <- dummyVars(target ~ ., data = data_full)
+dummy_data <- predict(full_dummies, newdata = data_full)
+
+D2_dummies <- dummyVars(target ~ ., data = D2)
+D2_dummy <- predict(D2_dummies, newdata = D2)
+
+D3_dummies <- dummyVars(target ~ ., data = D3)
+D3_dummy <- predict(D3_dummies, newdata = D3)
+
+D1_target <- cbind(dummy_data, target)
+D2_target <- cbind(D2_dummy, target)
+D3_target <- cbind(D3_dummy, target)
+
+sample <- sample(c(TRUE, FALSE), nrow(dummy_data), replace = TRUE, prob = c(.8, .2))
+
+D1_train <- D1_target[sample]
+D1_test <- data.table(dummy_data)[!sample]
+
+D2_train <- D2_target[sample]
+D2_test <- data.table(D2_dummy)[!sample]
+
+
+D3_train <- D3_target[sample]
+D3_test <- data.table(D3_dummy)[!sample]
+```
+
+Run each of the 3 models on D1
+```{r}
+# Logistic Regression
+D1_log_model <- fastglm(as.matrix(D1_train[,-"target"]), target$target[sample], family = binomial, maxit = 10L)
+D1_log_predict <- as.integer(predict(D1_log_model, as.matrix(D1_test), type = 'link') > .5)
+
+# KNN
+D1_knn <- data_full[, -"target"]
+D1_knn <- knn(D1_knn[sample], D1_knn[!sample], cl = target$target[sample])
+
+# SVM
+D1_svm <- svm(target ~., D1_train)
+D1_svm_predict <- as.integer(predict(D1_svm, D1_test) > .5)
+```
+
+
+Calculate confusion matrix and accuracy for each of the models on D1
+```{r}
+# Logistic Regression
+D1_confusion_log <- confusionMatrix(data = as.factor(D1_log_predict), reference = as.factor(target$target[!sample]))
+
+# KNN
+D1_confusion_knn <- confusionMatrix(data = as.factor(D1_knn), reference = as.factor(target$target[!sample]))
+
+# SVM
+D1_confusion_SVM <- confusionMatrix(data = as.factor(D1_svm_predict), reference = as.factor(target$target[!sample]))
+```
+
+Run each of the 3 models on D2
+```{r}
+# Logistic Regression
+D2_log_model <- fastglm(as.matrix(D2_train[,-"target"]), target$target[sample], family = binomial, maxit = 25L)
+D2_log_predict <- as.integer(predict(D2_log_model, as.matrix(D2_test), type = 'link') > .5)
+
+# KNN
+D2_knn <- D2[, -"target"]
+D2_knn <- knn(D2_knn[sample], D2_knn[!sample], cl = target$target[sample])
+
+# SVM
+D2_svm <- svm(target ~., D2_train)
+D2_svm_predict <- as.integer(predict(D2_svm, D2_test) > .5)
+
+```
+
+
+Calculate confusion matrix and accuracy for each of the models on D2
+```{r}
+# Logistic Regression
+D2_confusion_log <- confusionMatrix(data = as.factor(D2_log_predict), reference = as.factor(target$target[!sample]))
+
+# KNN
+D2_confusion_knn <- confusionMatrix(data = as.factor(D2_knn), reference = as.factor(target$target[!sample]))
+
+# SVM
+D2_confusion_SVM <- confusionMatrix(data = as.factor(D2_svm_predict), reference = as.factor(target$target[!sample]))
+```
+
+Run each of the 3 models on D3
+```{r}
+# Logistic Regression
+D3_log_model <- fastglm(as.matrix(D3_train[,-"target"]), target$target[sample], family = binomial, maxit = 15L)
+D3_log_predict <- as.integer(predict(D3_log_model, as.matrix(D3_test), type = 'link') > .5)
+
+# KNN
+D3_knn <- D3[, -"target"]
+D3_knn <- knn(D3_knn[sample], D3_knn[!sample], cl = target$target[sample])
+
+# SVM
+D3_svm <- svm(target ~., D3_train)
+D3_svm_predict <- as.integer(predict(D3_svm, D3_test) > .5)
+
+```
+
+
+Calculate confusion matrix and accuracy for each of the models on D3
+```{r}
+# Logistic Regression
+D3_confusion_log <- confusionMatrix(data = as.factor(D3_log_predict), reference = as.factor(target$target[!sample]))
+
+# KNN
+D3_confusion_knn <- confusionMatrix(data = as.factor(D3_knn), reference = as.factor(target$target[!sample]))
+
+# SVM
+D3_confusion_SVM <- confusionMatrix(data = as.factor(D3_svm_predict), reference = as.factor(target$target[!sample]))
+```
+
+Compare and analyze results
+```{r}
+compare <- data.table(
+  Logistic_regression = c(D1_confusion_log$overall['Accuracy'], D2_confusion_log$overall['Accuracy'], D3_confusion_log$overall['Accuracy']),
+  KNN = c(D1_confusion_knn$overall['Accuracy'], D2_confusion_knn$overall['Accuracy'], D3_confusion_knn$overall['Accuracy']),
+  SVM = c(D1_confusion_SVM$overall['Accuracy'], D2_confusion_SVM$overall['Accuracy'], D3_confusion_SVM$overall['Accuracy'])
+)
+```
